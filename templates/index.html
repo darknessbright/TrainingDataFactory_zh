@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>训练数据工厂</title>
+    <script src="{{ url_for('static', filename='js/socket.io.js') }}"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #0056b3;
+            margin: 10px 0;
+            font-size: 28px;
+            line-height: 1.2;
+        }
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background-color: #fdfdfd;
+        }
+        .form-section h2 {
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 22px;
+            line-height: 1.3;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"],
+        select,
+        textarea,
+        input[type="number"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 170px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .download-links a {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-right: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .download-links a:hover {
+            background-color: #218838;
+        }
+        .version-text {
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            margin-top: 5px; /* 减小上边距 */
+            margin-bottom: 20px; /* 增加下边距以保持整体间距 */
+        }
+        /* 进度条样式 */
+        .progress-container {
+            margin: 10px 0;
+            display: block;
+        }
+        .progress-container h2 {
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 22px;
+            line-height: 1.3;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+        /* 左右布局样式 */
+        .form-container {
+            display: flex;
+            gap: 30px;
+        }
+        .left-column {
+            flex: 1;
+        }
+        .right-column {
+            flex: 1;
+        }
+        @media (max-width: 768px) {
+            .form-container {
+                flex-direction: column;
+            }
+        }
+        /* 模型参数样式 */
+        .model-params {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .param-group {
+            margin-bottom: 10px;
+        }
+        .param-group label {
+            margin-bottom: 5px;
+        }
+        .param-group input {
+            margin-bottom: 0;
+        }
+        @media (max-width: 768px) {
+            .model-params {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* 下载区域样式 */
+        #download-section {
+            display: none;
+        }
+        /* 加载指示器 */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>大模型微调训练数据工厂</h1>
+        <h2 class="version-text">Ver 25.10.16</h2>
+
+        {% if message %}
+            <div class="message">{{ message }}</div>
+        {% endif %}
+
+        <div id="error-message" class="error-message" style="display: none;"></div>
+
+        <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+            <div class="form-container">
+                <!-- 左侧列 -->
+                <div class="left-column">
+                    <div class="form-section">
+                        <h2>1. 上传原始训练数据文件</h2>
+                        <label for="single_file">上传单个文件:</label>
+                        <input type="file" id="single_file" name="file" accept=".txt,.md,.json,.csv">
+
+                        <label for="multiple_files">批量上传文件:</label>
+                        <input type="file" id="multiple_files" name="files[]" multiple accept=".txt,.md,.json,.csv">
+                    </div>
+
+                    <div class="form-section">
+                        <h2>2. 样本切分配置</h2>
+                        <label for="max_length">最大文本块长度 (Token数量):</label>
+                        <input type="number" id="max_length" name="max_length" value="2048" min="100" max="4096">
+
+                        <label for="similarity_threshold">语义相似度阈值 (0.0 - 1.0):</label>
+                        <input type="number" id="similarity_threshold" name="similarity_threshold" value="0.79" step="0.01" min="0" max="1">
+                    </div>
+                </div>
+
+                <!-- 右侧列 -->
+                <div class="right-column">
+                    <div class="form-section">
+                        <h2>3. 大模型设置</h2>
+                        <label for="model_choice">选择大模型:</label>
+                        <select id="model_choice" name="model_choice">
+                            <option value="">加载模型中... <span class="loading"></span></option>
+                        </select>
+                        <div class="model-params">
+                            <div class="param-group">
+                                <label for="temperature">Temperature (0.0 - 2.0):</label>
+                                <input type="number" id="temperature" name="temperature" value="0.7" step="0.1" min="0" max="2">
+                            </div>
+                            <div class="param-group">
+                                <label for="top_k">Top-K (1 - 100):</label>
+                                <input type="number" id="top_k" name="top_k" value="50" min="1" max="100">
+                            </div>
+                            <div class="param-group">
+                                <label for="top_p">Top-P (0.0 - 1.0):</label>
+                                <input type="number" id="top_p" name="top_p" value="0.7" step="0.01" min="0" max="1">
+                            </div>
+                            <div class="param-group">
+                                <label for="context_window">上下文窗口大小 (Token):</label>
+                                <input type="number" id="context_window" name="context_window" value="4096" min="100" max="32768">
+                            </div>
+                        </div>
+                        <label for="prompt_text">用于生成训练数据的Prompt (可选):</label>
+                        <textarea id="prompt_text" name="prompt_text" placeholder="（不知道用什么提示词就空着）"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 进度显示区域 -->
+            <div id="progress-container" class="progress-container">
+                <h2>处理进度</h2>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div id="progress-text" class="progress-text">准备中...</div>
+            </div>
+            <button type="submit" id="submit-btn">生成训练集和测试集</button>
+        </form>
+
+        <!-- 下载区域 -->
+        <div id="download-section" class="form-section download-links" style="margin-top: 30px;">
+            <h2>4. 数据下载</h2>
+            <p>数据已生成，请点击下载：</p>
+            <a id="train-download-link" href="">下载训练集</a>
+            <a id="test-download-link" href="">下载测试集</a>
+        </div>
+    </div>
+
+    <script>
+        // 初始化SocketIO连接
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+        // 获取DOM元素
+        const progressContainer = document.getElementById('progress-container');
+        const progressFill = document.getElementById('progress-fill');
+        const progressText = document.getElementById('progress-text');
+        const submitBtn = document.getElementById('submit-btn');
+        const uploadForm = document.getElementById('upload-form');
+        const errorMessage = document.getElementById('error-message');
+        const downloadSection = document.getElementById('download-section');
+        const trainDownloadLink = document.getElementById('train-download-link');
+        const testDownloadLink = document.getElementById('test-download-link');
+        const modelChoice = document.getElementById('model_choice');
+        progressFill.style.width = '0%';
+        progressText.textContent = '开始处理...';
+
+        // 动态加载模型选项
+        function loadModelOptions() {
+            fetch('/ollama_models')
+                .then(response => response.json())
+                .then(models => {
+                    // 清空现有选项
+                    modelChoice.innerHTML = '';
+
+                    // 添加默认选项
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = 'bert-base-chinese';
+                    defaultOption.textContent = 'gpt-oss:120b-cloud';
+                    modelChoice.appendChild(defaultOption);
+
+                    // 添加从API获取的模型
+                    models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        modelChoice.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('加载模型列表失败:', error);
+                    modelChoice.innerHTML = '<option value="bert-base-chinese">gpt-oss:120b-cloud</option>';
+                });
+        }
+
+        // 页面加载时获取模型列表
+        document.addEventListener('DOMContentLoaded', function() {
+            loadModelOptions();
+        });
+
+        // 监听进度更新事件
+        socket.on('progress_update', function(data) {
+            progressFill.style.width = data.progress + '%';
+            progressText.textContent = data.message;
+        });
+
+        // 监听处理完成事件
+        socket.on('processing_complete', function(data) {
+            progressFill.style.width = '100%';
+            progressText.textContent = data.message;
+
+            // 启用提交按钮
+            submitBtn.disabled = false;
+            submitBtn.textContent = '生成训练集和测试集';
+
+            // 显示下载链接
+            trainDownloadLink.href = '/download/' + data.train_file;
+            trainDownloadLink.textContent = '下载训练集 (' + data.train_file + ')';
+            testDownloadLink.href = '/download/' + data.test_file;
+            testDownloadLink.textContent = '下载测试集 (' + data.test_file + ')';
+            downloadSection.style.display = 'block';
+
+            // 显示成功消息
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.textContent = data.message;
+            uploadForm.parentNode.insertBefore(messageDiv, uploadForm.nextSibling);
+
+            // 3秒后隐藏进度条
+            /*
+            setTimeout(function() {
+                progressContainer.style.display = 'none';
+            }, 3000);
+            */
+        });
+
+        // 监听处理错误事件
+        socket.on('processing_error', function(data) {
+            // 显示错误消息
+            errorMessage.textContent = data.message;
+            errorMessage.style.display = 'block';
+
+            // 启用提交按钮
+            submitBtn.disabled = false;
+            submitBtn.textContent = '生成训练集和测试集';
+
+            // 隐藏进度条
+            progressContainer.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
