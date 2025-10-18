@@ -1,0 +1,2 @@
+# TrainingDataFactory_zh
+大模型微调训练数据批量生成
