@@ -2,8 +2,10 @@
 <img src='../assets/title_image.png' width="250"/>
 </div>
 
+[![TrainingDataFactory_zh](assets/title_image.png)](assets/title_image.png)
+
 <div align="center">
-<a href="README.md" style="font-size: 24px">简体中文</a> | 
+<a href="README.md" style="font-size: 24px">简体中文</a> 
 </div>
 
 ## 👉🏻大模型微调训练数据工厂👈🏻
