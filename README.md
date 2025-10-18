@@ -1,7 +1,3 @@
-<div align="center">
-<img src='../assets/title_image.png' width="250"/>
-</div>
-
 [![TrainingDataFactory_zh](assets/title_image.png)](assets/title_image.png)
 
 <div align="center">
