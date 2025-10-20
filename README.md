@@ -18,7 +18,8 @@
 
 后续将使用“增强型文本段落分割技术”进行优化。
 
->**Tips:** 如需更多信息请联系作者：北风小漠。邮箱：darknessbright@126.com</u>。
+> [!TIP]
+>**注：** 如需更多信息请联系作者：北风小漠。邮箱：darknessbright@126.com</u>。
 
 > [!CAUTION]
 > 感谢大家对TrainingDataFactory_zh项目的支持与关注！
